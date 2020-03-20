@@ -79,6 +79,7 @@ enum {
     VIRT_SECURE_MEM,
     VIRT_PCDIMM_ACPI,
     VIRT_ACPI_GED,
+    VIRT_MMCI,
     VIRT_LOWMEMMAP_LAST,
 };
 

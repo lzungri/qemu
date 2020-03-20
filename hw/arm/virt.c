@@ -143,6 +143,7 @@ static const MemMapEntry base_memmap[] = {
     [VIRT_SMMU] =               { 0x09050000, 0x00020000 },
     [VIRT_PCDIMM_ACPI] =        { 0x09070000, MEMORY_HOTPLUG_IO_LEN },
     [VIRT_ACPI_GED] =           { 0x09080000, ACPI_GED_EVT_SEL_LEN },
+    [VIRT_MMCI] =               { 0x09090000, 0x00001000 },
     [VIRT_MMIO] =               { 0x0a000000, 0x00000200 },
     /* ...repeating for a total of NUM_VIRTIO_TRANSPORTS, each of that size */
     [VIRT_PLATFORM_BUS] =       { 0x0c000000, 0x02000000 },
@@ -179,10 +180,12 @@ static const int a15irqmap[] = {
     [VIRT_GPIO] = 7,
     [VIRT_SECURE_UART] = 8,
     [VIRT_ACPI_GED] = 9,
+    [VIRT_MMCI] = 10, /* MMCI actual irq is 42 since the first 32 GIC interrupts are internal */
     [VIRT_MMIO] = 16, /* ...to 16 + NUM_VIRTIO_TRANSPORTS - 1 */
     [VIRT_GIC_V2M] = 48, /* ...to 48 + NUM_GICV2M_SPIS - 1 */
     [VIRT_SMMU] = 74,    /* ...to 74 + NUM_SMMU_IRQS - 1 */
     [VIRT_PLATFORM_BUS] = 112, /* ...to 112 + PLATFORM_BUS_NUM_IRQS -1 */
+
 };
 
 static const char *valid_cpus[] = {
@@ -788,6 +791,13 @@ static void create_rtc(const VirtMachineState *vms, qemu_irq *pic)
     qemu_fdt_setprop_cell(vms->fdt, nodename, "clocks", vms->clock_phandle);
     qemu_fdt_setprop_string(vms->fdt, nodename, "clock-names", "apb_pclk");
     g_free(nodename);
+}
+
+static void create_mmci(const VirtMachineState *vms, qemu_irq *pic)
+{
+    hwaddr base = vms->memmap[VIRT_MMCI].base;
+    int irq = vms->irqmap[VIRT_MMCI];
+    sysbus_create_simple("pl181", base, pic[irq]);
 }
 
 static DeviceState *gpio_key_dev;
@@ -1728,6 +1738,8 @@ static void machvirt_init(MachineState *machine)
     create_rtc(vms, pic);
 
     create_pcie(vms, pic);
+
+    create_mmci(vms, pic);
 
     if (has_ged && aarch64 && firmware_loaded && acpi_enabled) {
         vms->acpi_dev = create_acpi_ged(vms, pic);
